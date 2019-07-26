@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+    <h1>Sign In</h1>
+    <form action="" method="post" novalidate>
+        <p>
+            {{ form.username['label'] }}
+            <br>
+            <input type="text" name="username" placeholder="Username Or Email" 
+            value="{{ form.username['value'] }}">
+            <br>
+            {% for error in form.username['errors'] %}
+                <span style="color: red;">{{error}}</span>
+            {% endfor %}
+            <br>
+            <br>
+            {{ form.password['label'] }}
+            <br>
+            <input type="password" name="password" placeholder="Password">
+            <br>
+            {% for error in form.password['errors'] %}
+                <span style="color: red;">{{error}}</span>
+            {% endfor %}
+            <br>
+            <input type="checkbox" name="remember_me" value="yes" checked="true"><span>{{ form.remember_me['label'] }}</span>
+            <br>
+            <br>
+            <button type="submit" name="submit">{{ form.submit['label'] }}</button>
+        </p>
+    
+    </form>
+    <p>New User? <a href="{{url_for('register')}}">Register</a></p>
+{% endblock %}

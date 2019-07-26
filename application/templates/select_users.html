@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block app_content %}
+
+	<span style="font-size: 17px;">Form link:</span>
+	<input type="text" name="share_url_link" value=" {{ share_url }} " style="width: 40%;" id="share-url-link" readonly="readonly">
+	&nbsp;<button type="button" id="copy-link-button" onclick="copyToClipBoard()">Copy Link</button>
+
+	<h3>Search Users</h3>
+
+	<form action=" {{ url_for('select_users', share_url = share_url) }} " method="POST">		
+		{% if not searched %}
+			<input type="text" name="search">
+			<button type="submit" name="submit-search">Search</button>
+		{% else %}
+			<input type="text" name="search" value=" {{ seached_for }} ">
+			<button type="submit" name="submit-search">Search</button>
+		{% endif %}
+	</form>
+
+	{% if searched %}
+	<h3>Select Users: </h3>
+	<form action=" {{ url_for('select_users', share_url = share_url) }} " method="POST" id="search-form">		
+		<ul style="list-style-type: none;" id="select-ul" name="results-ul">
+			
+		</ul>
+		<button type="submit" name="submit-search-results" id="selection-button"><span>Submit selection</span></button>
+
+	</form>
+	{% endif %}
+
+	{% if selected %}
+		<h3>Selected: </h3>
+		<form action=" {{ url_for('select_users', share_url = share_url) }} " method="POST">
+			{% for username in selected_users %}
+				<span>{{ username }},&nbsp;</span>
+			{% endfor %}
+			<button type="submit" name="submit-selected">Submit overall selection</button>
+		</form>
+	{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+
+	<script type="text/javascript">
+		
+		var results = '{{results}}';
+		console.log("Results:" );
+		console.log(results);
+		var ul = document.getElementById('select-ul');
+		var i = 0;
+		var selected = [];
+
+		{% for result in results %}
+			var result = '{{result}}';
+			console.log(result);
+			var li = document.createElement('li');
+			var input = document.createElement('input');
+			var span = document.createElement('span');
+
+			input.type = 'checkbox';
+			input.name = 'result' + i;
+			input.id = 'result' + i;
+			input.addEventListener('change', changeSelection);
+			span.innerText = span.textContent = result;
+			li.appendChild(input);
+			li.appendChild(span);
+			ul.appendChild(li);
+			++i;
+		{% endfor %}
+
+		function changeSelection(e){
+			var checked = this.checked;
+			var username = this.parentElement.getElementsByTagName('span')[0].innerText;
+			if(checked){
+				selected.push(username);
+			}
+			else{
+				var index = selected.indexOf(username);
+				if(index !== -1){
+					selected.splice(index, 1);
+				}
+			}
+		}
+
+		function copyToClipBoard(){
+			document.getElementById('share-url-link').select();
+			document.execCommand('copy');
+		}
+	</script>
+
+{% endblock %}

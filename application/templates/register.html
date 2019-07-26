@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+    <h1>Sign Up</h1>
+    <br>
+    <form action="" method="post" novalidate>
+        <p>
+            {{ form.username['label'] }}
+            <br>
+            <input type="text" name="username" placeholder="Username" 
+            value="{{ form.username['value'] }}">
+            <br>
+            {% for error in form.username['errors'] %}
+                <span style="color: red;">{{error}}</span>
+            {% endfor %}
+            <br>
+            <br>
+            {{ form.email['label'] }}
+            <br>
+            <input type="text" name="email" placeholder="xyz@example.com" 
+            value="{{ form.email['value'] }}">
+            <br>
+            {% for error in form.email['errors'] %}
+                <span style="color: red;">{{error}}</span>
+            {% endfor %}
+            <br>
+            <br>
+            {{ form.password['label'] }}
+            <br>
+            <input type="password" name="password" placeholder="Password">
+            <br>
+            {% for error in form.password['errors'] %}
+                <span style="color: red;">{{error}}</span>
+            {% endfor %}
+            <br>
+            <br>
+            {{ form.confirm_password['label'] }}
+            <br>
+            <input type="password" name="confirm_password" placeholder="Password">
+            <br>
+            {% for error in form.confirm_password['errors'] %}
+                <span style="color: red;">{{error}}</span>
+            {% endfor %}
+            <br>
+            <br>
+            <button type="submit" name="submit">{{ form.submit['label'] }}</button>
+        </p>
+    
+    </form>
+    <p>Already Registered? <a href="{{url_for('login')}}">Login</a></p>
+{% endblock %}

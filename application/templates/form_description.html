@@ -1,0 +1,9 @@
+<div>
+	<h4><div>{{form.title}}</div></h4>
+	<div>
+		<a href="{{url_for('owner_view', timestamp = form.timestamp)}}">View Response</a>&emsp;   
+		<a href="{{url_for('delete', timestamp = form.timestamp)}}">Delete</a>
+	</div>
+	<div>Created: {{moment(form.timestamp).fromNow()}}</div>
+
+</div>

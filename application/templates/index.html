@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block app_content %}
+	{% if not current_user.is_anonymous %}
+		<h1>Welcome {{current_user.username}}!</h1>
+	{% else %}
+		<h1>Welcome Anonymous</h1>
+	{% endif %}
+	{% if not current_user.is_anonymous %}
+	<form action=" {{ url_for('create_form') }} " method="POST">
+		<button type="submit">Create Form</button>
+	</form>
+	{% endif %}
+	<h3>Your Forms: </h3>
+	<ul style="list-style: none;" id="latest-forms">
+	{% for form in forms %}
+		<li>{% include 'form_description.html' %}</li>
+	{% endfor %}
+	</ul>
+
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block styles %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='form_builder.css') }}">
+{% endblock %}
+
+{% block app_content %}
+
+	<form action=" {{ url_for('tokenize_form') }} " method="POST" id="form">
+		<h3 id="form-title-h3"><textarea rows="1" cols="30" id="form-title">New Form</textarea></h3>
+		<br>
+		<select id="create-field" onchange="createField()" style="font-size: 17px;">
+			<option>--Create--</option>
+			<h5><option>Text</option></h5>
+			<h5><option>Number</option></h5>
+		</select>
+		<br>
+		<br>
+		<div id="form-fields" style="flex-direction: column; display: flex;">
+			
+		</div>
+		<br>
+		<button type="button" name="share-button" id="share-button">Send</button>
+	</form>
+
+{% endblock %}
+
+{% block scripts %}
+
+	<script type="text/javascript">
+		
+		var createSelect = document.getElementById('create-field');
+		var mainForm = document.getElementById('form-fields');
+		var form = document.getElementById('form');
+		var formTitle = document.getElementById('form-title');
+		var number_fields = 0;
+		var fields = [];
+		var formTitle = "New Form";
+
+		document.getElementById('share-button').addEventListener('click', submit);
+
+		document.getElementById('form-title').addEventListener('propertyChange', changeMainTitle);
+		document.getElementById('form-title').addEventListener('input', changeMainTitle);
+		document.getElementById('form-title').addEventListener('change', changeMainTitle);
+
+		class FormField{
+			constructor(type, question){
+				this.type = type;
+				this.question = question;
+			}
+			changeQuestion(question){
+				this.question = question;
+			}
+		}
+
+		function createField(){
+			let index = createSelect.selectedIndex;
+			if(index === 0){
+				return;
+			}
+			
+			if(index === 1){
+				let h4 = document.createElement('h4');
+				let title = document.createElement('textarea');
+				title.innerText = title.textContent = "Text Question";
+				title.rows = "1";
+				title.cols = "30";
+				title.id = "text" + number_fields;
+				title.addEventListener('propertyChange', changeTitle);
+				title.addEventListener('input', changeTitle);
+				title.addEventListener('change', changeTitle);
+				let input = document.createElement('input');
+				// console.log("ID of text field: " + title.id);
+				input.type = 'text';
+				fields.push(new FormField('text', "Text Question"));
+				// input.label = "Long Answer";
+				input.value = "Long Answer";
+				input.autocomplete = 'off';
+				input.disabled = true;
+				h4.appendChild(title);
+				mainForm.appendChild(h4);
+				mainForm.appendChild(input);
+				++number_fields;
+
+			}
+			else if(index === 2){
+				let h4 = document.createElement('h4');
+				let title = document.createElement('textarea');
+				title.innerText = title.textContent = "Numerical Question";
+				title.rows = "1";
+				title.cols = "30";
+				title.id = "number" + number_fields;
+				title.addEventListener('propertyChange', changeTitle);
+				title.addEventListener('input', changeTitle);
+				title.addEventListener('change', changeTitle);
+				let input = document.createElement('input');
+				// console.log("ID of number field: " + title.id);
+				input.type = 'number';
+				fields.push(new FormField('number', "Numerical Question"));
+				input.value = "100";
+				input.autocomplete = 'off';
+				input.disabled = true;
+				h4.appendChild(title);
+				mainForm.appendChild(h4);
+				mainForm.appendChild(input);
+				++number_fields;
+			}
+			mainForm.appendChild(document.createElement('br'));
+
+		}
+
+		function changeTitle(e){
+			let id = this.id;
+			if(id.includes('text')){
+
+				let number = parseInt(id.slice('text'.length, id.length), 10);
+				let question = this.value;
+				fields[number].changeQuestion(question);
+			}
+			else if(id.includes('number')){
+				
+				let number = parseInt(id.slice('number'.length, id.length), 10);
+				let question = this.value;
+				fields[number].changeQuestion(question);
+			}
+		}
+
+		function changeMainTitle(e){
+			formTitle = this.value;
+			console.log("Form title changed to: " + formTitle);
+		}
+
+		function submit(){
+			fields = JSON.stringify(fields);
+			console.log(fields);
+			
+			form.action = "/tokenize?title="+ formTitle + "&fields=" + fields;
+			form.submit();
+		}
+
+		
+	</script>
+
+{% endblock %}
