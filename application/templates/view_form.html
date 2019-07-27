@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block app_content %}
+
+	<form action="" method="POST" id="form">
+		<h3> {{ form_title }} </h3>
+		
+	</form>
+
+{% endblock %}
+
+{% block scripts %}
+
+	<script type="text/javascript">
+
+		var form = document.getElementById('form');
+		var i = 0;
+		{% for field in fields %}
+			var question = "{{ field['question'] }}";
+
+			console.log("Question: " + question);
+			console.log("Field: {{ field }} ")
+			var h4 = document.createElement('h4');
+			form.appendChild(h4);
+			h4.innerText = h4.textContent = question;
+			var input = document.createElement('input');
+			{% if field['type'] == 'text' %}
+				input.type = 'text';
+
+			{% elif field['type'] == 'number' %}
+				input.type = 'number';
+
+			{% endif %}
+
+			input.name = 'field' + i;
+			{% if field['answer'] is not none %}
+				input.value = "{{ field['answer'] }}";
+			{% endif %}
+			form.appendChild(input);
+
+			{% for error in field['errors'] %}
+				var span = document.createElement('span');
+				span.innerText = span.textContent = "{{error}}";
+				span.style.color = "red";
+				form.appendChild(document.createElement('br'));
+				form.appendChild(span);
+			{% endfor %}
+
+			form.appendChild(document.createElement('br'));
+			++i;			
+		{% endfor %}
+
+		form.appendChild(document.createElement('br'));
+		var submit = document.createElement('button');
+		submit.type = 'submit';
+		submit.innerText = submit.textContent = 'Submit';
+		form.appendChild(submit);
+
+	</script>
+
+{% endblock %}

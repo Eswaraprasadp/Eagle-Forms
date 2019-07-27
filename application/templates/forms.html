@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block app_content %}
+	{% if not current_user.is_anonymous %}
+		<h2>Your Forms: </h3>
+		<ul style="list-style: none;" id="latest-forms">
+		{% for form in forms %}
+			<li>{% include 'form_description.html' %}</li>
+		{% endfor %}
+		</ul>
+	{% endif %}
+
+{% endblock %}

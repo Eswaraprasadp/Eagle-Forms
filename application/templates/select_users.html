@@ -31,7 +31,7 @@
 
 	{% if selected %}
 		<h3>Selected: </h3>
-		<form action=" {{ url_for('select_users', share_url = share_url) }} " method="POST">
+		<form action=" {{ url_for('select_users', share_url = share_url, submitted = 'true') }} " method="POST">
 			{% for username in selected_users %}
 				<span>{{ username }},&nbsp;</span>
 			{% endfor %}

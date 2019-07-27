@@ -1,0 +1,10 @@
+<div>
+	<h4>{{ invitation.form.user.username }} invited you to fill:</h4>
+	<h4>{{ invitation.form.title }}</h4>
+	<div>
+		<a href="{{ url_for('view_form', form_link = invitation.form.form_link) }}">Fill Form</a>&emsp;   
+		<a href="{{url_for('delete_notification', form_link = invitation.form.form_link)}}">Delete Notification</a>
+	</div>
+	<div>Recieved: {{moment(invitation.timestamp).fromNow()}}</div>
+	<br>
+</div>

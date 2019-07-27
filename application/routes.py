@@ -1,8 +1,8 @@
-from flask import render_template, flash, redirect, url_for, request
-from application import app, db, jwtToken, parseJwt
+from flask import render_template, flash, redirect, url_for, request, abort
+from application import app, db, jwtToken, parseJwt, safeJwtToken, parseSafeJwt
 from flask_login import current_user, login_user, logout_user, login_required
 from application.forms import UserForm, RegistrationForm
-from application.models import User, Form
+from application.models import User, Form, Response, Invitation
 from werkzeug.urls import url_parse
 from datetime import datetime
 import traceback
@@ -11,8 +11,65 @@ import json
 @app.route('/index', methods = ['POST', 'GET'])
 @app.route('/', methods = ['POST', 'GET'])
 def index():
-	forms = current_user.forms.order_by(Form.timestamp.desc()).all()
-	return render_template('index.html', forms = forms)
+	return render_template('index.html')
+
+@app.route('/<form_link>/viewform', methods = ['POST', 'GET'])
+def view_form(form_link):
+	try:
+		if not current_user.is_authenticated:
+			flash('Login to fill forms')
+			return redirect(url_for('login'))
+
+		form = db.session.query(Form).filter_by(form_link = form_link).first_or_404()
+		title = form.get_title()
+		fields, valid = form.get_fields()
+
+		if not valid:
+			print ("Invalid Fields: ", fields)
+			abort(404)
+
+		if current_user.is_filler(form):
+			flash("You have already responded")
+			return redirect(url_for('index'))
+
+		if request.method == 'GET':
+			print("Title: ", title, ", Fields: ", fields)
+			return render_template('view_form.html', form_title = title, fields = fields, title = title)
+
+		else:
+			answers = []
+
+			for field, i in zip(fields, range(len(fields))):
+
+				answer_field = request.form.get('field%d' % i)
+				print("Answer: ", answer_field)
+
+				if answer_field is None:
+					field['errors'] = ['This field is requied']
+					return render_template('view_form.html', form_title = title, fields = fields, title = title)
+
+				elif field['type'] == 'number':
+					try:
+						field['answer'] = float(answer_field)
+						answers.append(field['answer'])
+					except:
+						print(traceback.format_exc())
+						field['errors'].append("A number is expected")
+						return render_template('view_form.html', form_title = title, fields = fields, title = title)
+				else:
+					field['answer'] = answer_field
+					answers.append(field['answer'])
+
+			response_json = '{"username":"' + current_user.username + '","answers":' + json.dumps(answers) + '}'
+			print("Response JSON: ", response_json)
+			response_jwt = safeJwtToken(response_json)
+			current_user.add_filled(response = response_jwt, form = form)
+			flash("Your responses were recorded")
+			return redirect(url_for('index'))
+	
+	except:
+		print(traceback.format_exc())
+		abort(500)
 
 @app.route('/create', methods = ['POST', 'GET'])
 def create_form():
@@ -32,14 +89,15 @@ def tokenize_form():
 		# print("fields: ", fields)
 		try:
 			form = Form(user=current_user, title=title)
-			json_form = '{"username":' + '\"' + current_user.username + '\"' + ',"id":' + '\"' + '%d' % current_user.id + '\"' +',"title":' + '\"' + title + '\"' + ',"fields":' + fields + '}'
+			db.session.add(form)
+			db.session.commit()
+			json_form = '{"username":' + '\"' + current_user.username + '\"' + ',"id":' + '\"' + '%d' % form.id + '\"' +',"title":' + '\"' + title + '\"' + ',"fields":' + fields + '}'
 			# print('JSON Passed: ', json_form)
 			jwtTokenForm = jwtToken(json_form)
 			# print("JWT Token: ", jwtTokenForm)
-			url_root = request.url_root
-			share_url = url_root + jwtTokenForm.decode("utf-8")
-			print("Share URL: ", share_url)
-			return redirect(url_for('select_users', share_url = share_url))
+			form.form_link = jwtTokenForm.decode("utf-8")
+			db.session.commit()
+			return redirect(url_for('select_users', form_link = form.form_link))
 			# fields = json.loads(fields)
 			# print("fields: ", fields)
 
@@ -52,21 +110,63 @@ def tokenize_form():
 
 @app.route('/select_users',  methods = ['POST', 'GET'])
 def select_users():
-	try:
-		if not current_user.is_authenticated:
-			return redirect(url_for('index'))
-	except:
-		print(traceback.format_exc())
+
+	if not current_user.is_authenticated:
+		return redirect(url_for('index'))
+
+	share_url = request.args.get('share_url')
+
+	if share_url is None:
+
+		form_link = request.args.get('form_link')
+		form = db.session.query(Form).filter_by(form_link = form_link).first_or_404()
+
+		url_root = request.url_root
+		share_url = url_root + form_link + "/viewform"
+
+	print("Share URL: ", share_url)
 
 	if request.method == 'POST':
 		try:
-			share_url = request.args.get('share_url')
+
 			search_input = request.form.get('search')
-			selected_first = request.form.get('result0')
 			saved_selected_users = [user.username for user in db.session.query(User).filter_by(selected = True).all()]
 			selected = True if len(saved_selected_users) else False
+			submitted = request.args.get('submitted')
+			submitted = True if submitted == 'true' else False
 
-			if search_input is not None:
+			if submitted:
+				if not selected:
+					return render_template('select_users.html', searched = False, selected = selected, 
+						selected_users = saved_selected_users, share_url = share_url, title = 'Search')
+
+				form_link = request.args.get('form_link')
+				
+				if share_url is None and form_link is None:
+					abort(404)
+
+				elif form_link is None:
+					url_root = request.url_root
+					root_index = share_url.index(request.url_root)
+					view_index = share_url.index("/viewform")
+					print("Root Index: ", root_index, "View Index: ", view_index)
+					form_link = share_url[len(url_root) + root_index : view_index]
+
+				print("Form link: ", form_link)				
+				print("Saved selected users submitted: ", saved_selected_users)
+
+				form = db.session.query(Form).filter_by(form_link = form_link).first_or_404()
+				
+				for user in saved_selected_users:
+					u = db.session.query(User).filter_by(username = user).first_or_404()
+					form.add_inviter(u)
+
+				flash("Form URLs shared to " + ", ".join(saved_selected_users))
+				db.session.query(User).update({User.searched:False,User.selected:False})
+				db.session.commit()
+				return redirect(url_for('index'))
+
+			elif search_input is not None:
 
 				# print("Search input is valid")
 				db.session.query(User).update({User.searched: False})
@@ -119,24 +219,88 @@ def select_users():
 		
 		except:
 			print("Error: ", traceback.format_exc())
-			share_url = request.args.get('share_url')
 			return render_template('select_users.html', searched = False, share_url = share_url, title = 'Search')
 
 	else:
-		share_url = request.args.get('share_url')
 		return render_template('select_users.html', searched = False, share_url = share_url, title = 'Search')
 	 
-@app.route('/owner_view', methods = ['POST', 'GET'])
-def owner_view():
-	timestamp = request.args.get('timestamp')
-	print("Timestamp", timestamp)
-	return render_template('index.html', title = "View")
+@app.route('/<form_link>/responses', methods = ['POST', 'GET'])
+def responses(form_link):
+	form = db.session.query(Form).filter_by(form_link = form_link).first_or_404()
+	if form.user.id != current_user.id:
+		abort(404)
+
+	responses = form.get_responses()
+	fields, valid = form.get_fields()
+
+	if not valid:
+		abort(404)
+
+	responses_data = []
+
+	for response in responses:
+		data, valid = parseSafeJwt(response.response)
+		if not valid:
+			abort(404)
+
+		responses_data.append(data)
+
+	return render_template('responses.html', title = "View Responses", fields = fields, responses = responses_data, form_title = form.get_title())
+
+@app.route('/forms')
+def forms():
+
+	if not current_user.is_anonymous:
+		flash("Login to view your forms")
+		return redirect(url_for('login'))
+
+
+	db.session.query(User).update({User.searched:False,User.selected:False})
+	db.session.commit()
+
+	forms = current_user.forms.order_by(Form.timestamp.desc()).all()
+
+	return render_template('forms.html', forms = forms)
 
 @app.route('/delete', methods = ['POST', 'GET'])
 def delete():
-	timestamp = request.args.get('timestamp')
-	print("Timestamp", timestamp)
+	form_link = request.args.get('form_link')
+	form = db.session.query(Form).filter_by(form_link = form_link).first_or_404()
+	
+	if form.user.id != current_user.id:
+		abort(404)
+
+	db.session.query(Response).filter_by(form = form).delete()
+	db.session.delete(form)
+
+	flash(form.title + " Deleted")
+
+	db.session.commit()
 	return render_template('index.html', title = "Delete")
+
+@app.route('/delete_notification', methods = ['POST', 'GET'])
+def delete_notification():
+	try:
+		if not current_user.is_authenticated:
+			flash("Login to delete notifications")
+			return redirect(url_for('login'))
+
+		form_link = request.args.get('form_link')
+		invitation = User.get_invitation(form_link)
+		if invitation is None:
+			abort(404)
+
+		title = invitation.form.title
+
+		current_user.delete_invitation(invitation)
+
+		flash("Invitation for " + title + " deleted")
+
+		return redirect(url_for('index'))
+
+	except Exception as e:
+		print(traceback.format_exc())
+		return redirect(url_for('index'))
 
 @app.route('/login', methods = ['POST', 'GET'])
 def login():
@@ -241,6 +405,14 @@ def register():
 def logout():
 	logout_user()
 	return redirect(url_for('login'))
+
+@app.errorhandler(500)
+def internal_server_error(error):
+	return "Internal Server Error\nStatus Code: 500", 500
+
+@app.errorhandler(404)
+def not_found_error(error):
+	return "Page not found\nStatus Code: 404", 404
 
 if(__name__ == '__main__'):
 	app.run(debug = True)

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block app_content %}
+
+	<h2>{{ form_title }}</h2>
+	<h3>{{ responses|length }} Responses</h3>
+	<br>
+
+	{% for field, i in fields|zip(range(fields|length)) %}
+		<h4>{{ field['question'] }}</h4>
+
+		{% for response in responses %}
+
+			<span>{{ response['answers'][i] }}</span>
+			<br>
+
+		{% endfor %}		
+
+	{% endfor %}
+
+{% endblock %}
